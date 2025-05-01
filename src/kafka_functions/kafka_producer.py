@@ -38,6 +38,6 @@ def send_to_kafka(data: Dict[str, Any], topics_list: List[str]) -> None:
             # Logs the full stack trace for this specific topic
             logger.exception(f"Failed to produce data to Kafka topic {topic}")
     try:
-        producer.close(timeout=1)
+        producer.flush()
     except Exception:
         logger.exception("Failed to flush Kafka producer")
