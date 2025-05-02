@@ -15,7 +15,7 @@ from transformers import AutoImageProcessor, AutoModelForImageClassification
 from analysis.utils import DestandardizeAge
 from processor.processor import ImagePreprocessor
 from analysis.load_models.regressor import ResNet50Regressor
-from configs.config import GENDER_DETECTOR, AGE_DETECTOR_WEIGHTS
+from configs.config import GENDER_DETECTOR, AGE_DETECTOR_WEIGHTS, EMBEDDING_MODEL
 
 
 # Setup logger
@@ -62,7 +62,10 @@ class Analyzer:
                 raise
 
         try:
-            resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+            # resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1) 
+            ckpt = torch.load(EMBEDDING_MODEL, map_location="cpu")
+            resnet = models.resnet50(pretrained=False)
+            resnet.load_state_dict(ckpt)
             self.embedding_model = nn.Sequential(*list(resnet.children())[:-1])  # Remove FC layer
             self.embedding_model.eval()
             logger.info("Embedding model initialized successfully.")

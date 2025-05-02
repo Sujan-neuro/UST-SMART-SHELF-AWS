@@ -3,7 +3,8 @@ STORE_LOCATION = get_current_location()
 
 # MODEL WEIGHTS
 AGE_DETECTOR_WEIGHTS = "./src/analysis/models/resnet50_regression.pth"
-GENDER_DETECTOR = "rizvandwiki/gender-classification"
+GENDER_DETECTOR = "/home/pranta/Downloads/gender_detection_model"
+EMBEDDING_MODEL = "/home/pranta/Downloads/resnet50-0676ba61.pth"
 
 # DETAILED CONFIGURABLE ITEMS
 DEFAULT_CAMERA_INDEX = 0
@@ -17,8 +18,8 @@ TRACKING_DURATION_SEC = 3
 MAX_EMBEDDING_TO_MATCH = 500
 
 # SCREEN LOCATION ID
-LOCATION_ID = "..."
+LOCATION_ID = "67e26a2b29853b7303244dc3"
 
 #KAFKA DETAILS
-TOPICS = ['...']
-BOOTSTRAP_SERVERS='...'
+TOPICS = ['AWS_Singapore']
+BOOTSTRAP_SERVERS='139.5.190.16:9092'
