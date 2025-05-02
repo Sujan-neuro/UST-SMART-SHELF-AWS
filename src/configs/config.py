@@ -3,7 +3,8 @@ STORE_LOCATION = get_current_location()
 
 # MODEL WEIGHTS
 AGE_DETECTOR_WEIGHTS = "./src/analysis/models/resnet50_regression.pth"
-GENDER_DETECTOR = "rizvandwiki/gender-classification"
+GENDER_DETECTOR = "/home/pranta/Downloads/gender_detection_model"
+EMBEDDING_MODEL = "/home/pranta/Downloads/resnet50-0676ba61.pth"
 
 # DETAILED CONFIGURABLE ITEMS
 DEFAULT_CAMERA_INDEX = 0
