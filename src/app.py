@@ -81,16 +81,23 @@ def format_age(age: int) -> str:
         return 0
 
 
+MAX_LOG_LENGTH = 500  # Adjust based on performance
+
 def update_detection_log(message: str, log_placeholder) -> None:
     """Append a single message to the sidebar log without interrupting the app."""
     try:
-        st.session_state.detection_log.append(message)
-        # show most recent at the top
-        log_text = "\n".join(reversed(st.session_state.detection_log))
+        log_list = st.session_state.get("detection_log", [])
+        log_list.append(message)
+        if len(log_list) > MAX_LOG_LENGTH:
+            log_list = log_list[-MAX_LOG_LENGTH:]  # Keep only the latest logs
+        st.session_state.detection_log = log_list
+
+        log_text = "\n".join(reversed(log_list))
         log_placeholder.text_area("Detection Log", value=log_text, height=300, disabled=True)
         log_handler.store_log(message)
     except Exception as e:
         logger.warning(f"Error updating detection log: {e}", exc_info=True)
+
 
 
 def process_stream(face_processor: FaceProcessor, config: dict, frame_placeholder, log_placeholder) -> None:
@@ -131,7 +138,7 @@ def process_stream(face_processor: FaceProcessor, config: dict, frame_placeholde
                     logger.info(log_entry)
                     try:
                         send_to_kafka(result, TOPICS)
-                        log_entry = f"Payload sent to Kafka successfully. If you do not see the ad, it may either be currently playing or there could be an issue with the display."
+                        log_entry = f"If you do not see the ad, it may either be currently playing or there could be an issue with the display or kafka server."
                         update_detection_log(log_entry, log_placeholder)
                         log_handler.store_log(f"Payload: {result}")
                         logger.info(log_entry)
