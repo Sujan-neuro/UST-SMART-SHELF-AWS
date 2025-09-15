@@ -26,6 +26,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def _strip_known_prefixes(k: str) -> str:
+    for p in ("module.", "model.", "backbone."):
+        if k.startswith(p):
+            return k[len(p):]
+    return k
+
 
 class Analyzer:
     """
@@ -62,16 +68,29 @@ class Analyzer:
                 raise
 
         try:
-            # resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1) 
-            ckpt = torch.load(EMBEDDING_MODEL, map_location="cpu")
-            resnet = models.resnet50(pretrained=False)
-            resnet.load_state_dict(ckpt)
-            self.embedding_model = nn.Sequential(*list(resnet.children())[:-1])  # Remove FC layer
+            # Start from a vanilla backbone
+            resnet = models.resnet50(weights=None)  # keep None; we're loading trained backbone weights
+            resnet.fc = nn.Identity()
+
+            state = torch.load(EMBEDDING_MODEL, map_location="cpu")
+
+            cleaned = {}
+            for k, v in state.items():
+                k = _strip_known_prefixes(k)
+                if k.startswith("fc.") or k.startswith("fc.0."):
+                    continue  # drop classification head entirely
+                cleaned[k] = v
+
+            resnet.load_state_dict(cleaned, strict=False)
+            self.embedding_model = resnet
+            # Expose embeddings: conv->...->avgpool, then flatten => [B, 2048]
+            # self.embedding_model = nn.Sequential(*(list(resnet.children())[:-1]),nn.Flatten())
             self.embedding_model.eval()
-            logger.info("Embedding model initialized successfully.")
+            logger.info(f"Embedding model initialized successfully. ")
         except Exception as e:
-            logger.error(f"Failed to initialize embedding model: {e}")
-            raise 
+            logger.error(f"Failed to initialize embedding model: {e}", exc_info=True)
+            raise
+
 
         self.destandardizer = DestandardizeAge()
 
