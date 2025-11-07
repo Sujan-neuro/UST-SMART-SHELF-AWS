@@ -21,8 +21,6 @@ MAX_EMBEDDING_TO_MATCH = 500
 LOCATION_ID = "..."
 
 # API CONFIGURATION
-# BASE_URL = 'http://localhost:5001'
-# API_KEY = 'test_api_key_123'
 BASE_URL = "https://pfrm.fcust.com"  # Change this line
 API_KEY = "AGGJ4FpR0lJHv9Vjedc49K7A2Nrqv9OVXnVt6TWYoNUWRdquPY2pHfg39BxoObP5utcfL4mvNqGkwAt7X7ochdGitpB001TixxfRGHp181jxiFOnu4ufwUCMrUlZ2ce9"        # Change this line
 # API PAYLOAD CONFIGURATION
