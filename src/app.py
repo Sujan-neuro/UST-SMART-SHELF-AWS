@@ -1,4 +1,5 @@
 import os
+import random
 # ── Disable Streamlit’s file‐watcher to avoid torch.classes introspection errors
 os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
 
@@ -7,12 +8,19 @@ import logging
 import traceback
 import streamlit as st
 
-from configs.utils import LoopAd
-from configs.config import TOPICS
+# from configs.utils import LoopAd
+# from configs.config import TOPICS
 from log_utils.logs import LogHandler
 from faceprocessor import FaceProcessor
-from kafka_functions.kafka_producer import send_to_kafka
+# from kafka_functions.kafka_producer import send_to_kafka
 from streamlit_files.streamlit_utils import set_page_style, display_header, sidebar_config
+from configs.config import (
+    BASE_URL, API_KEY,
+    DEFAULT_DEVICE_TYPE, DEFAULT_EVENTS, DEFAULT_COMPANY_NAME,
+    DISPLAY_IDS, STORE_UUID, STORE_UUID_TYPE,
+    PURCHASE_INTENT, VISITOR_SEGMENTS
+)
+from api_functions.ph_adapter import send_visitor_data_to_api
 
 # Setup logger
 logging.basicConfig(
@@ -23,7 +31,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 log_handler = LogHandler()
-loopad = LoopAd()
+# loopad = LoopAd()
+
 
 
 def initialize_session_state() -> None:
@@ -99,7 +108,6 @@ def update_detection_log(message: str, log_placeholder) -> None:
         logger.warning(f"Error updating detection log: {e}", exc_info=True)
 
 
-
 def process_stream(face_processor: FaceProcessor, config: dict, frame_placeholder, log_placeholder) -> None:
     """Main loop to process camera stream."""
     try:
@@ -121,7 +129,7 @@ def process_stream(face_processor: FaceProcessor, config: dict, frame_placeholde
                 age = format_age(result.get("age", 0))
                 gender = result.get("gender", "Neutral")
                 draw_bbox_with_label(frame, bbox, age, gender)
-                result = loopad.assign_age(result)
+                # result = loopad.assign_age(result)
 
                 person_id = result.get("visitorId")
                 if face_processor.tracker.check_for_api(person_id):
@@ -137,19 +145,56 @@ def process_stream(face_processor: FaceProcessor, config: dict, frame_placeholde
                     update_detection_log(log_entry, log_placeholder)
                     logger.info(log_entry)
                     try:
-                        send_to_kafka(result, TOPICS)
-                        log_entry = f"If you do not see the ad, it may either be currently playing or there could be an issue with the display or kafka server."
-                        update_detection_log(log_entry, log_placeholder)
-                        log_handler.store_log(f"Payload: {result}")
-                        logger.info(log_entry)
-                        log_entry = f"_____________________Transaction Successful__________________"
-                        update_detection_log(log_entry, log_placeholder)
+                        # Determine events based on gender and age availability
+                        # Get raw age and gender from result (before formatting)
+                        raw_age = result.get("age", 0)
+                        raw_gender = result.get("gender", "Neutral")
+                        
+                        # If both gender and age are present (not default values), use empty string
+                        # Otherwise, randomly select one value from DEFAULT_EVENTS
+                        if raw_age > 0 and raw_gender != "Neutral":
+                            events_to_send = [""]
+                        else:
+                            # Randomly select one value from DEFAULT_EVENTS if available
+                            events_to_send = [random.choice(DEFAULT_EVENTS)] if DEFAULT_EVENTS else [""]
+                        
+                        # Send visitor data to API instead of Kafka
+                        success = send_visitor_data_to_api(
+                            result,
+                            base_url=BASE_URL,
+                            apikey=API_KEY,
+                            device_type=DEFAULT_DEVICE_TYPE,
+                            events=events_to_send,
+                            company_name=DEFAULT_COMPANY_NAME,
+                            display_ids=DISPLAY_IDS,
+                            store_uuid=STORE_UUID,
+                            store_uuid_type=STORE_UUID_TYPE,
+                            purchase_intent=PURCHASE_INTENT,
+                            visitor_segments=VISITOR_SEGMENTS,
+                            use_all_store_displays=False,  # Set to False to use specific display_ids instead
+                            timeout=5.0
+                        )
+                        
+                        if success:
+                            log_entry = f"Visitor data successfully sent to API. If you do not see the ad, it may either be currently playing or there could be an issue with the display."
+                            update_detection_log(log_entry, log_placeholder)
+                            log_handler.store_log(f"API Payload: {result}")
+                            logger.info(log_entry)
+                            log_entry = f"_____________________API Transaction Successful__________________"
+                            update_detection_log(log_entry, log_placeholder)
+                        else:
+                            log_entry = f"Failed to send visitor data to API."
+                            update_detection_log(log_entry, log_placeholder)
+                            logger.warning(log_entry)
+                            log_entry = f"________________________API Transaction Failed____________________"
+                            update_detection_log(log_entry, log_placeholder)
+                            
                     except Exception as e:
-                        logger.warning(f"Unable to send payload to Kafka: {e}", exc_info = True)
-                        log_entry = f"Issue with kafka, unable to send the payload to kafka."
+                        logger.warning(f"Unable to send payload to API: {e}", exc_info=True)
+                        log_entry = f"Issue with API, unable to send the payload to API."
                         update_detection_log(log_entry, log_placeholder)
                         logger.warning(log_entry)
-                        log_entry = f"________________________Transaction Failed____________________"
+                        log_entry = f"________________________API Transaction Failed____________________"
                         update_detection_log(log_entry, log_placeholder)
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
